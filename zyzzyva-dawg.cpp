@@ -161,6 +161,25 @@ struct Dawg {
         is.read(reinterpret_cast<char *>(dawg.data()), edges * sizeof(uint32_t));
     }
 
+    void checksum(std::ostream& os) {
+        static const uint32_t crc_tbl[16] = {
+            0x0000, 0x1081, 0x2102, 0x3183, 0x4204, 0x5285, 0x6306, 0x7387,
+            0x8408, 0x9489, 0xa50a, 0xb58b, 0xc60c, 0xd68d, 0xe70e, 0xf78f,
+        };
+        const unsigned char *p = reinterpret_cast<const unsigned char *>(dawg.data());
+        size_t bytes = dawg.size(); // copy Zyzzyva bug
+        uint32_t crc = 0xffffu;
+
+        while (bytes--) {
+            uint8_t c = *p++;
+            crc = ((crc >> 4) & 0x0fff) ^ crc_tbl[((crc ^ c) & 15)];
+            c >>= 4;
+            crc = ((crc >> 4) & 0x0fff) ^ crc_tbl[((crc ^ c) & 15)];
+        }
+
+        os << ((~crc) & 0xffffu) << "\n";
+    }
+
     static const size_t hash_modulo_increment(size_t base, size_t inc) {
         base += inc;
         return (base >= HASH_TABLE_SIZE) ? base - HASH_TABLE_SIZE : base;
@@ -277,10 +296,16 @@ int main(int argc, char *argv[])
             std::ofstream out(output, std::ios::out);
             d.dump(out ? out : std::cout);
         }
+        else if (command == "checksum") {
+            d.load(std::ifstream(input, std::ios::in | std::ios::binary));
+            std::ofstream out(output, std::ios::out);
+            d.checksum(out ? out : std::cout);
+        }
         else {
             std::cerr << "Unknown command (" << command << ").  Possible commands:\n\n"
                 << "Syntax: zyzzyva-dawg create <input text file | '-'> <output DAWG file>\n"
                 << "Syntax: zyzzyva-dawg dump <input DAWG file> [<output text file>]\n"
+                << "Syntax: zyzzyva-dawg checksum <input DAWG file> [<output textual checksum>]\n"
                 << "\n";
         }
 
