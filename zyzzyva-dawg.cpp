@@ -19,7 +19,9 @@
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <istream>
 #include <numeric>
+#include <ostream>
 #include <vector>
 
 namespace Dawg {
